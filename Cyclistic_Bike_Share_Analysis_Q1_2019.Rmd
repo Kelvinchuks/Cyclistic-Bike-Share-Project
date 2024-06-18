@@ -1,0 +1,239 @@
+---
+title: "Cyclistic Bike Share Analysis Q1 2019"
+author: "Toochukwu Okutalukwe"
+date: "2024-06-08"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Table of content
+  * Introduction
+  * Purpose of the Project
+  * Problem Statement
+  * Data Cleaning and Transformation
+  * Analysis Breakdown
+  * Summary and Recommendation
+
+### Introduction
+
+**DATA SOURCE**:
+
+The dataset used for this analysis was obtained from the **Cyclistics** company database for the year 2019 provided by **Google/Coursera** to solve real-world case studies.\
+Here is the dataset for your reference [Click Dataset](https://docs.google.com/spreadsheets/d/1uCTsHlZLm4L7-ueaSLwDg0ut3BP_V4mKDo2IMpaXrk4/template/preview?resourcekey=0-dQAUjAu2UUCsLEQQt20PDA#gid=1797029090)
+
+### Purpose of the Project
+
+The business task is to maximize the number of annual members by converting **casual riders** into **annual members**.
+
+### Problem Statement
+
+The object is to compare the usage patterns of **annual members and casual riders** of Cyclistic bike-sharing service. By analyzing metrics like trip duration, frequency, and usage times, I aim to identify key factors that can help convert casual riders into annual members, thereby increasing annual memberships. This analysis will provide insights for strategies to boost membership conversion and retention.
+
+###  Data Cleaning and Transformation
+
+#### Setting up my environment
+
+\
+Note: Setting up my R environment by loading `tidyverse`, `skimr`, `janitor`, `dplyr`, `dplR`, `ggplot2`, `lubridate`, and `readr` packages
+
+```{r loading packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(skimr)
+library(janitor)
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library(dplR)
+library(readxl)
+library(readr)
+
+```
+
+#### Load the data using the readr function
+
+\
+Loading and Exploring the Data: Understand the structure and content of the dataset.
+
+```{r echo=FALSE}
+Cyclistic_data <- read_csv("C:/Users/pc/Downloads/Khan_Academy_SQL_Learner/Divvy_Trips_2019_Q1 - Copy.csv")
+```
+
+
+#### Explore the data using the `head` and `summary` function
+
+\
+```{r Exploring the first 10 rows }
+head(Cyclistic_data, n=10)
+```
+
+```{r summary of Cyclistic data }
+summary(Cyclistic_data)
+```
+
+#### Clean the data
+
+\
+Note: Check for missing values. Here i found out there is an NA value at the **gender** column
+```{r}
+colSums(is.na(Cyclistic_data))
+```
+
+Replace NA values with "Not applicable" in **gender** column
+
+```{r}
+Cyclistic_data <- Cyclistic_data %>%
+  mutate(gender = ifelse(is.na(gender), "Not applicable", gender))
+```
+
+Re-check for NA values
+
+```{r}
+colSums(is.na(Cyclistic_data))
+```
+
+Convert date columns to date type
+
+```{r}
+Cyclistic_data$start_time <- as.POSIXct(Cyclistic_data$start_time, format="%m/%d/%Y %H:%M")
+Cyclistic_data$end_time <- as.POSIXct(Cyclistic_data$end_time, format="%m/%d/%Y %H:%M")
+```
+
+#### Transform the data
+
+\
+Note: I create new variables: **rider_length**, **day_of_week** and **hour_of_day**
+```{r echo=TRUE}
+Cyclistic_data <- Cyclistic_data %>%
+  mutate(rider_length = as.numeric(difftime(end_time, start_time, units = "mins")),
+         hour_of_day = hour(start_time),
+         day_of_week = wday(start_time, label = TRUE),
+         start_month = month(start_time, label = TRUE))
+print(Cyclistic_data, n=10)
+```
+
+### Analysis Breakdown
+
+\
+Statistical analysis: I generated descriptive statistics and look for interesting patterns.
+
+```{r}
+summary(Cyclistic_data$rider_length)
+```
+
+```{r}
+summary(Cyclistic_data$day_of_week)
+```
+
+```{r}
+summary(Cyclistic_data$hour_of_day)
+```
+
+```{r}
+summary(Cyclistic_data$start_month, 4)
+```
+
+#### Top 5 start stations
+
+\
+```{r echo=TRUE}
+top_start_stations <- Cyclistic_data %>%
+  count(from_station_name, sort = TRUE) %>%
+  top_n(5)
+top_start_stations
+```
+
+#### Create visuals
+
+\
+**Rider length by user type**: 
+This plot compares trip durations across user types, revealing that casual riders generally have longer trip durations compared to members.
+
+```{r echo=FALSE}
+ggplot(Cyclistic_data, aes(x = usertype, y = rider_length)) +
+  geom_boxplot(fill = "red", color = "black") +
+  labs(title = "Rider length by User Type", x = "User Type", y = "Rider length (minutes)", caption = "Cyclistic Data Collected by Google for Capstone Project Purpose")
+```
+
+\
+**Distribution of rider_length**: 
+This histogram displays the distribution of trip durations, indicating that the majority of trips for both user types are short, with most lasting less than 30 minutes.
+
+```{r echo=FALSE, warning=FALSE}
+ggplot(Cyclistic_data, aes(x = rider_length)) +
+  geom_histogram(binwidth = 5, fill = "blue", color = "black") +
+  xlim(0,100)+
+  facet_wrap(~usertype)+
+  labs(title = "Distribution of Rider_Length", x = "Duration (minutes)", y = "Frequency")
+```
+
+\
+**Number of ride per hour of the day**:
+This plot illustrates the peak usage hours for riders, showing a higher frequency of trips during afternoon and evening hours for **casual riders**, whereas **members** exhibit peak usage in the morning and evening.
+
+```{r echo=FALSE}
+ggplot(Cyclistic_data, aes(x = hour_of_day, fill = usertype)) +
+  geom_bar() +
+  facet_wrap(~usertype)+
+  labs(title = "Number of Ride per Hour of the Day", x = "Hour of the Day", y = "Number of Ride")
+```
+
+\
+**Number of ride per day of the week**:
+This bar chart depicts the weekly riding frequency by user type, highlighting that **casual riders** predominantly ride on Saturdays and Sundays, while **members** have a higher riding frequency on weekdays.
+
+```{r echo=FALSE}
+ggplot(Cyclistic_data, aes(x = day_of_week, fill = usertype)) +
+  geom_bar() +
+  facet_wrap(~usertype)+
+  labs(title = "Number of Ride per Day of the Week", x = "Day of the Week", y = "Number of Ride")
+```
+
+\
+**Number of ride by month**:
+This bar chart illustrates a seasonal trend for the first quartile, showing a decline in rider activity in **February** and an increment in **March**.
+
+```{r echo=FALSE}
+ggplot(Cyclistic_data, aes(x = start_month)) +
+  geom_bar(fill = 'orange') +
+  labs(title = 'Number of Ride by Month', x = 'Month', y = 'Count')
+```
+
+\
+**Average ride duration by day of the week**:
+This plot presents the average trip duration by day of the week, indicating that Thursday has the highest average trip duration.
+
+```{r echo=FALSE}
+ggplot(Cyclistic_data, aes(x = day_of_week, y = rider_length)) +
+  geom_boxplot(fill = "orange") +
+  labs(title = "Average Rider Length by Day of the Week", x = "Day of the Week", y = "Rider Length (minutes)")
+```
+
+\
+
+### Summary
+
+Analysis of trip durations and riding patterns reveals distinct user behavior between casual riders and members. While short trips (under 30 minutes) dominate both groups, casual riders demonstrate a propensity for longer journeys. Peak usage times further differentiate the user base. Casual riders exhibit a preference for afternoons and evenings, whereas members favor mornings and evenings. Weekly riding patterns diverge as well, with casual riders gravitating towards weekends, especially Saturdays and Sundays. Conversely, members tend to ride more frequently on weekdays. Seasonal trends highlight a decrease in activity during February, followed by a subsequent rise in March. Notably, average trip durations reach a peak on Thursdays, suggesting specific mid-week riding habits. These insights present valuable opportunities for targeted service and engagement strategies to enhance user satisfaction and optimize operational efficiency for both casual riders and members.
+
+### Recommendation
+
+#### A Data-Driven Approach to Converting Casual Riders into Annual Members
+
+\
+This report outlines a multi-faceted marketing strategy designed to leverage user data and convert casual riders into annual members. Our analysis of trip durations and riding patterns has yielded several key insights that inform these targeted initiatives:
+
+* **Cost Savings for Frequent Riders**: We have observed that casual riders often take longer trips. Capitalizing on this data point, we will emphasize the significant cost benefits an annual membership offers for frequent long-distance riders. Comparative cost analyses will be presented to clearly demonstrate potential savings.
+
+* **Peak Hour Promotions**: Our data suggests casual riders primarily utilize the service during afternoon and evening hours. To capture their attention during peak usage times, promotions and advertisements for membership plans will be strategically placed during these periods.
+
+* **Weekend Membership Campaigns**: Casual riders exhibit a clear preference for riding on Saturdays and Sundays. Weekend-only promotions or special offers for annual memberships will be launched to capitalize on this trend and entice riders during their peak usage days.
+
+* **Seasonal Incentives**: Recognizing a decline in rider activity during February and a subsequent increase in March, we propose offering limited-time discounts on annual memberships at the end of winter. This incentivizes casual riders to commit to a membership as the weather improves and riding frequency rises.
+
+* **Promoting Weekday Benefits**: As members tend to ride more on weekdays, we will highlight the advantages of membership for those considering increased riding during the workweek. Campaigns showcasing the convenience and cost savings for regular commuters will be implemented.
+
+* **Leveraging High Trip Duration Days**: With Thursdays exhibiting the highest average trip duration, we will create targeted campaigns specifically tailored to this day. "Thursday Membership Deals" will incentivize casual riders taking longer trips to convert to annual memberships.
+
+* **The Power of Social Proof**: Customer testimonials and success stories from current members who transitioned from being casual riders will be shared. These narratives will highlight member satisfaction with the program's benefits, emphasizing cost savings, convenience, and overall value.
+
+By implementing these data-driven strategies, the company can effectively target casual riders, addressing their specific usage patterns and motivations. This comprehensive approach will ultimately lead to a significant increase in annual membership conversions.
